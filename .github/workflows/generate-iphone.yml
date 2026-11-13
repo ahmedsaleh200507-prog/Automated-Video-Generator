@@ -63,22 +63,25 @@ jobs:
           NODE
       - name: Render video
         run: npm run generate
-      - name: Verify video output
+      - name: Collect rendered MP4
         run: |
-          echo "Checking generated files:"
-          find . -type f -name '*.mp4' -not -path './node_modules/*' -print | head -80 || true
+          mkdir -p downloadable-video
           python - <<'PY'
           from pathlib import Path
-          files = [p for root in ('output','tmp','dist') for p in Path(root).rglob('*.mp4') if p.stat().st_size > 10000]
+          import shutil
+          excluded = ('node_modules', '.git', 'downloadable-video')
+          files = [p for p in Path('.').rglob('*.mp4') if not any(part in excluded for part in p.parts) and p.stat().st_size > 10000]
+          print('MP4 candidates:', [(str(p), p.stat().st_size) for p in files])
           if not files:
-              raise SystemExit('ERROR: No rendered MP4 exists. Check Render video logs for pipeline errors.')
-          print('MP4 files:', [str(p) for p in files])
+              raise SystemExit('No MP4 produced. Inspect Render video logs.')
+          selected = max(files, key=lambda p: p.stat().st_mtime)
+          shutil.copy2(selected, 'downloadable-video/youtube-video.mp4')
+          print('Downloadable MP4:', selected)
           PY
       - name: Save rendered MP4
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: youtube-video
-          path: |\n            output/**/*.mp4\n            tmp/**/*.mp4\n            dist/**/*.mp4
+          path: downloadable-video/youtube-video.mp4
           if-no-files-found: error
           retention-days: 7
