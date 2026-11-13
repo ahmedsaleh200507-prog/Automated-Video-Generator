@@ -62,7 +62,17 @@ jobs:
           }], null, 2));
           NODE
       - name: Render video
-        run: npm run generate
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run generate 2>&1 | tee video-render.log
+      - name: Reject missing visual media
+        shell: bash
+        run: |
+          if grep -Eiq 'FALLBACK.*(visual|image|video)|\[(VISUAL|MEDIA)\].*FALLBACK|using fallback (video|visual|background)' video-render.log; then
+            echo "::error::Visual media fallback detected. Refusing text-only video."
+            exit 1
+          fi
       - name: Collect rendered MP4
         run: |
           mkdir -p downloadable-video
