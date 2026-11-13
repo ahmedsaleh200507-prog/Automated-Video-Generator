@@ -147,7 +147,7 @@ async function runGenerateJob(job: CliVideoJob, index: number, total: number, re
         return;
     }
 
-    console.error(`Failed "${job.title}": ${result.error || result.message}`);
+    throw new Error(`Failed "${job.title}": ${result.error || result.message}`);
 }
 
 async function runSegmentJob(job: CliVideoJob, index: number, total: number, request: PipelineJobRequest) {
@@ -163,7 +163,7 @@ async function runSegmentJob(job: CliVideoJob, index: number, total: number, req
         return;
     }
 
-    console.error(`Assembly failed for "${job.title}": ${result.error || result.message}`);
+    throw new Error(`Assembly failed for "${job.title}": ${result.error || result.message}`);
 }
 
 export async function runCli() {
