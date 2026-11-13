@@ -66,10 +66,10 @@ jobs:
       - name: Verify video output
         run: |
           echo "Checking generated files:"
-          find output -type f \\( -name '*.mp4' -o -name '*.json' \\) -print 2>/dev/null | head -80 || true
+          find . -type f -name '*.mp4' -not -path './node_modules/*' -print | head -80 || true
           python - <<'PY'
           from pathlib import Path
-          files = [p for p in Path('output').rglob('*.mp4') if p.stat().st_size > 10000]
+          files = [p for root in ('output','tmp','dist') for p in Path(root).rglob('*.mp4') if p.stat().st_size > 10000]
           if not files:
               raise SystemExit('ERROR: No rendered MP4 exists. Check Render video logs for pipeline errors.')
           print('MP4 files:', [str(p) for p in files])
@@ -79,6 +79,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: youtube-video
-          path: output/**/*.mp4\n          
+          path: |\n            output/**/*.mp4\n            tmp/**/*.mp4\n            dist/**/*.mp4
           if-no-files-found: error
           retention-days: 7
