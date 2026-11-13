@@ -1,0 +1,73 @@
+name: Generate YouTube Video (iPhone)
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: 'Text for your video'
+        required: true
+        type: string
+      language:
+        description: 'Voice language'
+        type: choice
+        options: [de-DE, en-US]
+        default: de-DE
+      orientation:
+        description: 'Video orientation'
+        type: choice
+        options: [portrait, landscape]
+        default: portrait
+permissions:
+  contents: read
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TTS_PROVIDER: edge-tts
+      OPENVERSE_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install edge-tts
+          npm ci
+      - name: Set script
+        env:
+          VIDEO_SCRIPT: ${{ inputs.script }}
+          VIDEO_LANGUAGE: ${{ inputs.language }}
+          VIDEO_ORIENTATION: ${{ inputs.orientation }}
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const script = process.env.VIDEO_SCRIPT?.trim();
+          if (!script) throw new Error('Script is empty');
+          fs.mkdirSync('input/scripts', {recursive:true});
+          fs.writeFileSync('input/scripts/input-scripts.json', JSON.stringify([{
+            id: 'iphone-video',
+            title: 'YouTube Video',
+            script,
+            orientation: process.env.VIDEO_ORIENTATION,
+            language: process.env.VIDEO_LANGUAGE === 'de-DE' ? 'german' : 'english',
+            voice: process.env.VIDEO_LANGUAGE === 'de-DE' ? 'de-DE-ConradNeural' : 'en-US-GuyNeural',
+            showText: true
+          }], null, 2));
+          NODE
+      - name: Render video
+        run: npm run generate
+      - name: Save rendered MP4
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-video
+          path: output/**/*.mp4
+          if-no-files-found: warn
+          retention-days: 7
